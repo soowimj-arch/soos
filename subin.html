@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="ko" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SUBIN | 열두 줄의 울림과 스크린의 잔상</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Fonts: Pretendard, Noto Serif KR, Cormorant Garamond -->
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Noto+Serif+KR:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            serif: ['"Noto Serif KR"', 'serif'],
+            editorial: ['"Cormorant Garamond"', '"Noto Serif KR"', 'serif'],
+          },
+          colors: {
+            paper: '#FAF8F5',
+            paperWarm: '#F3EFEA',
+            ink: '#232220',
+            inkMuted: '#635E57',
+            sage: '#7A8978',
+            terracotta: '#B5735B',
+            goldMuted: '#B89B6A',
+            lineSoft: '#E5DFD5',
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* 커스텀 스크롤바 및 에디토리얼 질감 */
+    body {
+      background-color: #FAF8F5;
+      color: #232220;
+      font-family: 'Pretendard', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* 은은한 한지/종이 노이즈 텍스처 오버레이 */
+    .paper-texture {
+      background-image: radial-gradient(rgba(35, 34, 32, 0.035) 1px, transparent 0);
+      background-size: 24px 24px;
+    }
+
+    /* 가야금 현 진동 애니메이션 */
+    @keyframes stringVibrate {
+      0%, 100% { transform: translateY(0px); }
+      20% { transform: translateY(-2.5px); }
+      40% { transform: translateY(2.5px); }
+      60% { transform: translateY(-1.5px); }
+      80% { transform: translateY(1.5px); }
+    }
+
+    .string-line:hover {
+      animation: stringVibrate 0.45s ease-in-out;
+      stroke: #B5735B;
+    }
+
+    /* 페이드업 등장 애니메이션 */
+    .reveal {
+      opacity: 0;
+      transform: translateY(22px);
+      transition: all 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .reveal.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* 재생 중 웨이브 바 애니메이션 */
+    @keyframes wavePulse {
+      0%, 100% { height: 6px; }
+      50% { height: 22px; }
+    }
+    .playing-bar:nth-child(1) { animation: wavePulse 0.9s infinite ease-in-out 0.1s; }
+    .playing-bar:nth-child(2) { animation: wavePulse 0.7s infinite ease-in-out 0.3s; }
+    .playing-bar:nth-child(3) { animation: wavePulse 1.0s infinite ease-in-out 0.2s; }
+    .playing-bar:nth-child(4) { animation: wavePulse 0.8s infinite ease-in-out 0.4s; }
+  </style>
+</head>
+<body class="paper-texture selection:bg-terracotta/20 selection:text-ink">
+
+  <!-- 상단 네비게이션 -->
+  <header id="navbar" class="fixed top-0 left-0 right-0 z-40 transition-all duration-300 bg-paper/85 backdrop-blur-md border-b border-lineSoft/70">
+    <div class="max-w-6xl mx-auto px-5 sm:px-8 h-16 sm:h-20 flex items-center justify-between">
+      <a href="#home" class="flex items-baseline gap-2.5 group">
+        <span class="font-editorial text-2xl sm:text-3xl tracking-widest font-medium text-ink group-hover:text-terracotta transition-colors">SUBIN</span>
+        <span class="text-xs text-inkMuted tracking-wider hidden sm:inline">| 가야금 & 시네마 아카이브</span>
+      </a>
+
+      <!-- 데스크탑 메뉴 -->
+      <nav class="hidden md:flex items-center gap-8 text-sm tracking-wide text-inkMuted">
+        <a href="#about" class="hover:text-ink transition-colors py-1">소개와 일상</a>
+        <a href="#performances" class="hover:text-ink transition-colors py-1">가야금 연주실</a>
+        <a href="#cinema" class="hover:text-ink transition-colors py-1">사랑하는 작품들</a>
+        <a href="#guestbook" class="hover:text-ink transition-colors py-1">방명록 · 문의</a>
+      </nav>
+
+      <!-- 우측 미니 오디오 상태 표시기 -->
+      <div class="flex items-center gap-3">
+        <button id="headerSoundToggle" onclick="toggleAmbientPluck()" class="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-lineSoft bg-paperWarm/80 hover:border-terracotta/50 text-xs text-inkMuted hover:text-ink transition-all" title="가야금 현 울림 테스트">
+          <span class="w-2 h-2 rounded-full bg-sage animate-pulse"></span>
+          <span>현 울림 듣기</span>
+        </button>
+
+        <!-- 모바일 햄버거 버튼 -->
+        <button id="mobileMenuBtn" class="md:hidden p-2 rounded-lg text-ink hover:bg-paperWarm" aria-label="메뉴 열기">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 7h16M4 12h16M4 17h16" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- 모바일 드롭다운 메뉴 -->
+    <div id="mobileMenu" class="hidden md:hidden bg-paper border-b border-lineSoft px-6 py-4 space-y-3 text-sm text-inkMuted">
+      <a href="#about" class="block py-2 hover:text-ink mobile-link">소개와 일상 (Daily)</a>
+      <a href="#performances" class="block py-2 hover:text-ink mobile-link">가야금 연주실 (Performances)</a>
+      <a href="#cinema" class="block py-2 hover:text-ink mobile-link">사랑하는 작품들 (Cinema & Drama)</a>
+      <a href="#guestbook" class="block py-2 hover:text-ink mobile-link">방명록 · 연주 문의 (Contact)</a>
+    </div>
+  </header>
+
+  <!-- 1. HERO SECTION (hero-gayageum 무드 계승) -->
+  <section id="home" class="relative pt-28 pb-20 sm:pt-36 sm:pb-28 px-5 sm:px-8 max-w-6xl mx-auto">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+      <!-- 왼쪽 타이포그래피 & 서정적 소개 -->
+      <div class="lg:col-span-6 space-y-6 reveal active">
+        <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-paperWarm border border-lineSoft text-xs text-inkMuted tracking-wider">
+          <span>GAYAGEUM PERFORMER &amp; STORYTELLER</span>
+        </div>
+
+        <h1 class="font-serif text-3xl sm:text-4xl lg:text-[42px] leading-[1.38] font-normal text-ink tracking-tight">
+          열두 줄의 울림과<br />
+          <span class="italic font-editorial text-terracotta">스크린의 잔상</span>을 기록합니다.
+        </h1>
+
+        <p class="text-inkMuted text-sm sm:text-base leading-relaxed max-w-lg">
+          안녕하세요, 가야금을 연주하는 <strong class="font-medium text-ink">수빈</strong>입니다.
+          오동나무 울림통 위 명주실을 뜯어내는 손끝의 떨림처럼,
+          전통 산조의 깊은 호흡부터 영화·드라마 속 애틋한 선율까지
+          일상의 고요한 순간들과 함께 차곡차곡 엮어냅니다.
+        </p>
+
+        <div class="pt-2 flex flex-wrap items-center gap-3.5">
+          <a href="#performances" class="px-6 py-3 rounded-full bg-ink text-paper text-sm font-medium hover:bg-terracotta transition-colors shadow-sm">
+            연주 영상 감상하기
+          </a>
+          <a href="#cinema" class="px-6 py-3 rounded-full border border-lineSoft bg-paperWarm/70 text-ink text-sm hover:border-ink/40 transition-colors">
+            인생 작품 노트 보기
+          </a>
+        </div>
+
+        <!-- 인터랙티브 미니 가야금 5음계 현 (마우스/터치로 뜯어볼 수 있는 장식) -->
+        <div class="pt-4">
+          <p class="text-[11px] text-inkMuted mb-2 flex items-center gap-1.5">
+            <span>♪ 아래 다섯 줄의 명주실(궁·상·각·치·우)을 터치해 소리를 들어보세요</span>
+          </p>
+          <div class="p-3.5 rounded-2xl bg-paperWarm/90 border border-lineSoft">
+            <svg viewBox="0 0 400 72" class="w-full h-14 cursor-pointer select-none" id="miniGayageumSvg">
+              <!-- 안족(기러기발) 장식 -->
+              <polygon points="75,10 70,62 80,62" fill="#B89B6A" opacity="0.45" />
+              <polygon points="145,14 140,62 150,62" fill="#B89B6A" opacity="0.45" />
+              <polygon points="215,18 210,62 220,62" fill="#B89B6A" opacity="0.45" />
+              <polygon points="285,22 280,62 290,62" fill="#B89B6A" opacity="0.45" />
+              <polygon points="345,26 340,62 350,62" fill="#B89B6A" opacity="0.45" />
+
+              <!-- 5음계 현 -->
+              <g onclick="pluckNote(261.63, '궁 (C)')">
+                <line x1="10" y1="14" x2="390" y2="14" stroke="#8C7A6B" stroke-width="2.2" class="string-line" />
+                <rect x="0" y="8" width="400" height="12" fill="transparent" />
+              </g>
+              <g onclick="pluckNote(293.66, '상 (D)')">
+                <line x1="10" y1="26" x2="390" y2="26" stroke="#8C7A6B" stroke-width="1.9" class="string-line" />
+                <rect x="0" y="20" width="400" height="12" fill="transparent" />
+              </g>
+              <g onclick="pluckNote(329.63, '각 (E)')">
+                <line x1="10" y1="38" x2="390" y2="38" stroke="#8C7A6B" stroke-width="1.6" class="string-line" />
+                <rect x="0" y="32" width="400" height="12" fill="transparent" />
+              </g>
+              <g onclick="pluckNote(392.00, '치 (G)')">
+                <line x1="10" y1="50" x2="390" y2="50" stroke="#8C7A6B" stroke-width="1.4" class="string-line" />
+                <rect x="0" y="44" width="400" height="12" fill="transparent" />
+              </g>
+              <g onclick="pluckNote(440.00, '우 (A)')">
+                <line x1="10" y1="62" x2="390" y2="62" stroke="#8C7A6B" stroke-width="1.2" class="string-line" />
+                <rect x="0" y="56" width="400" height="12" fill="transparent" />
+              </g>
+            </svg>
+            <div class="flex justify-between items-center text-[11px] text-inkMuted px-1 mt-1">
+              <span>황종 · 태주 · 중려 · 임종 · 남려</span>
+              <span id="pluckedNoteLabel" class="text-terracotta font-medium">현을 터치해 보세요</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 오른쪽 에디토리얼 비주얼 콜라주 (실제 가야금 명주실과 안족 고화질 사진) -->
+      <div class="lg:col-span-6 reveal active">
+        <div class="relative max-w-md mx-auto lg:max-w-none">
+          <div class="aspect-[4/5] rounded-3xl overflow-hidden shadow-md border border-lineSoft bg-paperWarm">
+            <img
+              src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Gayageum_02.jpg/1024px-Gayageum_02.jpg"
+              onerror="applySvgFallback(this, 'gayageum', '12현 산조가야금 · 오동나무의 울림')"
+              alt="오동나무 울림통 위 가야금의 명주실과 기러기발(안족)"
+              class="w-full h-full object-cover object-center hover:scale-105 transition-transform duration-700"
+            />
+          </div>
+
+          <!-- 플로팅 인용구 카드 -->
+          <div class="mt-4 sm:mt-0 sm:absolute sm:-bottom-6 sm:-left-6 bg-paper/95 backdrop-blur-md p-5 rounded-2xl border border-lineSoft shadow-sm max-w-xs">
+            <p class="font-serif text-xs sm:text-sm text-ink leading-relaxed">
+              “손끝에서 떠난 소리는 사라지는 것이 아니라, 듣는 이의 마음속 여백에 머뭅니다.”
+            </p>
+            <p class="text-[11px] text-inkMuted mt-2 font-editorial tracking-wider">— SUBIN's Practice Note</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. ABOUT & DAILY PIECES (about-detail, about-flowers, daily-coffee, daily-journal 무드 계승) -->
+  <section id="about" class="py-20 sm:py-24 bg-paperWarm/65 border-y border-lineSoft">
+    <div class="max-w-6xl mx-auto px-5 sm:px-8">
+      <div class="flex flex-col md:flex-row md:items-end justify-between mb-12 reveal">
+        <div>
+          <span class="font-editorial text-sm tracking-widest uppercase text-terracotta">About &amp; Daily Fragments</span>
+          <h2 class="font-serif text-2xl sm:text-3xl text-ink mt-1">연주자의 일상과 여백의 조각들</h2>
+        </div>
+        <p class="text-sm text-inkMuted mt-3 md:mt-0 max-w-md">
+          연습실의 정적, 아침의 따뜻한 커피 한 잔, 책상 위 계절의 꽃과 짧은 일기가 모여 저만의 소리가 됩니다.
+        </p>
+      </div>
+
+      <!-- 4개의 일상 & 정체성 카드 (각 테마에 밀접한 고화질 사진 적용) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- 카드 1: about-detail (가야금 현과 손끝 디테일) -->
+        <article class="group bg-paper rounded-2xl overflow-hidden border border-lineSoft shadow-sm hover:shadow-md transition-all reveal">
+          <div class="aspect-[4/3] overflow-hidden bg-paperWarm">
+            <img
+              src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Korean_string_instrument-Gayageum-01.jpg/800px-Korean_string_instrument-Gayageum-01.jpg"
+              onerror="applySvgFallback(this, 'gayageum', '12현과 25현의 경계에서')"
+              alt="가야금 명주실과 안족 클로즈업"
+              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          </div>
+          <div class="p-5">
+            <span class="text-[11px] font-editorial tracking-wider uppercase text-sage">01 · Resonance</span>
+            <h3 class="font-serif text-lg text-ink mt-1">12현과 25현의 경계에서</h3>
+            <p class="text-xs sm:text-sm text-inkMuted mt-2 leading-relaxed">
+              깊은 농현이 살아있는 12현 산조가야금부터 풍성한 화음의 25현 개량가야금까지, 시대를 넘나드는 음색을 탐구합니다.
+            </p>
+          </div>
+        </article>
+
+        <!-- 카드 2: daily-coffee (아침의 드립 커피와 도자기 찻잔) -->
+        <article class="group bg-paper rounded-2xl overflow-hidden border border-lineSoft shadow-sm hover:shadow-md transition-all reveal">
+          <div class="aspect-[4/3] overflow-hidden bg-paperWarm">
+            <img
+              src="https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&w=800&q=80"
+              onerror="applySvgFallback(this, 'coffee', '조율 전의 따뜻한 커피')"
+              alt="따뜻한 드립 커피와 도자기 찻잔"
+              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          </div>
+          <div class="p-5">
+            <span class="text-[11px] font-editorial tracking-wider uppercase text-terracotta">02 · Morning Ritual</span>
+            <h3 class="font-serif text-lg text-ink mt-1">조율 전의 따뜻한 커피</h3>
+            <p class="text-xs sm:text-sm text-inkMuted mt-2 leading-relaxed">
+              안족을 세우고 줄을 고르기 전, 온기 가득한 핸드드립 커피 한 잔으로 오늘 연주할 곡의 호흡을 먼저 가다듬습니다.
+            </p>
+          </div>
+        </article>
+
+        <!-- 카드 3: about-flowers (도자기 화병에 꽂힌 계절의 꽃) -->
+        <article class="group bg-paper rounded-2xl overflow-hidden border border-lineSoft shadow-sm hover:shadow-md transition-all reveal">
+          <div class="aspect-[4/3] overflow-hidden bg-paperWarm">
+            <img
+              src="https://images.unsplash.com/photo-1526047932273-341f2a7631f9?auto=format&fit=crop&w=800&q=80"
+              onerror="applySvgFallback(this, 'flower', '여백을 채우는 계절의 꽃')"
+              alt="도자기 화병에 담긴 계절의 들꽃"
+              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          </div>
+          <div class="p-5">
+            <span class="text-[11px] font-editorial tracking-wider uppercase text-sage">03 · Quiet Bloom</span>
+            <h3 class="font-serif text-lg text-ink mt-1">여백을 채우는 계절의 꽃</h3>
+            <p class="text-xs sm:text-sm text-inkMuted mt-2 leading-relaxed">
+              음표와 음표 사이의 쉼표가 음악을 완성하듯, 연습실 한켠에 놓인 작은 들꽃이 지친 마음에 부드러운 여백을 선물합니다.
+            </p>
+          </div>
+        </article>
+
+        <!-- 카드 4: daily-journal (만년필로 적어 내려간 오선지 악보 노트) -->
+        <article class="group bg-paper rounded-2xl overflow-hidden border border-lineSoft shadow-sm hover:shadow-md transition-all reveal">
+          <div class="aspect-[4/3] overflow-hidden bg-paperWarm">
+            <img
+              src="https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=800&q=80"
+              onerror="applySvgFallback(this, 'journal', '밤의 단상과 편곡 노트')"
+              alt="만년필과 손글씨 악보·일기장"
+              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          </div>
+          <div class="p-5">
+            <span class="text-[11px] font-editorial tracking-wider uppercase text-goldMuted">04 · Night Journal</span>
+            <h3 class="font-serif text-lg text-ink mt-1">밤의 단상과 편곡 노트</h3>
+            <p class="text-xs sm:text-sm text-inkMuted mt-2 leading-relaxed">
+              하루를 마무리하며 본 영화의 대사나 문득 떠오른 선율을 오선지와 일기장에 적어 내려가며 다음 무대를 그립니다.
+            </p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. GAYAGEUM PERFORMANCES (다양한 장르의 가야금 연주 영상 아카이브) -->
+  <section id="performances" class="py-20 sm:py-28 max-w-6xl mx-auto px-5 sm:px-8">
+    <div class="flex flex-col md:flex-row md:items-end justify-between mb-10 reveal">
+      <div>
+        <span class="font-editorial text-sm tracking-widest uppercase text-terracotta">Gayageum Repertoire &amp; Videos</span>
+        <h2 class="font-serif text-2xl sm:text-3xl text-ink mt-1">다양한 장르로 풀어낸 가야금 연주실</h2>
+      </div>
+      <p class="text-sm text-inkMuted mt-3 md:mt-0 max-w-md">
+        전통 산조의 깊은 멋부터 드라마·영화 OST 편곡, 재즈와 현대 창작곡까지 수빈의 시선으로 재해석한 연주 기록입니다.
+      </p>
+    </div>
+
+    <!-- 장르 필터 탭 -->
+    <div class="flex flex-wrap items-center gap-2 sm:gap-3 mb-10 reveal" id="genreFilters">
+      <button data-genre="all" class="genre-btn active px-4 py-2 rounded-full text-xs sm:text-sm font-medium bg-ink text-paper transition-all">
+        전체 연주 (6)
+      </button>
+      <button data-genre="traditional" class="genre-btn px-4 py-2 rounded-full text-xs sm:text-sm bg-paperWarm text-inkMuted border border-lineSoft hover:text-ink transition-all">
+        전통 산조 · 정악
+      </button>
+      <button data-genre="ost" class="genre-btn px-4 py-2 rounded-full text-xs sm:text-sm bg-paperWarm text-inkMuted border border-lineSoft hover:text-ink transition-all">
+        영화 · 드라마 OST
+      </button>
+      <button data-genre="contemporary" class="genre-btn px-4 py-2 rounded-full text-xs sm:text-sm bg-paperWarm text-inkMuted border border-lineSoft hover:text-ink transition-all">
+        현대 창작 · 뉴에이지
+      </button>
+      <button data-genre="crossover" class="genre-btn px-4 py-2 rounded-full text-xs sm:text-sm bg-paperWarm text-inkMuted border border-lineSoft hover:text-ink transition-all">
+        재즈 · 팝 크로스오버
+      </button>
+    </div>
+
+    <!-- 연주 영상 카드 그리드 (JS로 동적 렌더링 및 필터링) -->
+    <div id="performanceGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
+      <!-- JavaScript에서 카드가 생성됩니다 -->
+    </div>
+  </section>
+
+  <!-- 4. FAVORITE CINEMA & DRAMA ARCHIVE (파이브 피트, 정년이 등) -->
+  <section id="cinema" class="py-20 sm:py-28 bg-paperWarm/75 border-y border-lineSoft">
+    <div class="max-w-6xl mx-auto px-5 sm:px-8">
+      <div class="flex flex-col md:flex-row md:items-end justify-between mb-12 reveal">
+        <div>
+          <span class="font-editorial text-sm tracking-widest uppercase text-terracotta">Cinema &amp; Drama Curation</span>
+          <h2 class="font-serif text-2xl sm:text-3xl text-ink mt-1">마음에 오래 남은 영화와 드라마</h2>
+        </div>
+        <div class="mt-4 md:mt-0 flex items-center gap-3">
+          <p class="text-sm text-inkMuted hidden sm:block">스크린 너머로 건네받은 위로와 예술적 영감들</p>
+          <button onclick="openAddFilmModal()" class="px-4 py-2 rounded-full border border-terracotta/50 bg-paper text-terracotta text-xs sm:text-sm font-medium hover:bg-terracotta hover:text-paper transition-colors">
+            + 감상 노트 추가하기
+          </button>
+        </div>
+      </div>
+
+      <!-- 추천 작품 피처드 & 그리드 -->
+      <div id="cinemaGrid" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- JavaScript에서 파이브 피트, 정년이 등의 감상 카드가 생성됩니다 -->
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. GUESTBOOK & CONTACT (방명록 및 연주/협업 문의) -->
+  <section id="guestbook" class="py-20 sm:py-28 max-w-6xl mx-auto px-5 sm:px-8">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-12">
+      <!-- 왼쪽: 연주 문의 및 안내 -->
+      <div class="lg:col-span-5 space-y-6 reveal">
+        <span class="font-editorial text-sm tracking-widest uppercase text-sage">Connect &amp; Guestbook</span>
+        <h2 class="font-serif text-2xl sm:text-3xl text-ink">따뜻한 안부와 연주 문의</h2>
+        <p class="text-sm text-inkMuted leading-relaxed">
+          가야금 독주 및 앙상블 공연 섭외, 영화·드라마 OST 및 음원 녹음 세션,
+          또는 오늘 들으신 연주와 영화에 대한 작은 감상을 남겨주세요.
+        </p>
+
+        <div class="p-6 rounded-2xl bg-paperWarm border border-lineSoft space-y-4 text-sm">
+          <div class="flex items-start gap-3">
+            <span class="text-terracotta mt-0.5">✦</span>
+            <div>
+              <p class="font-medium text-ink">연주 및 협업 문의</p>
+              <p class="text-inkMuted text-xs mt-0.5">subin.gayageum@archive.kr</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="text-sage mt-0.5">✦</span>
+            <div>
+              <p class="font-medium text-ink">주요 활동 영역</p>
+              <p class="text-inkMuted text-xs mt-0.5">전통 산조 독주회 · 창작 국악 앙상블 · OST 커버 및 편곡</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="text-goldMuted mt-0.5">✦</span>
+            <div>
+              <p class="font-medium text-ink">작업실</p>
+              <p class="text-inkMuted text-xs mt-0.5">전주 · 서울 (객원 연주 및 스튜디오 레코딩 가능)</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 오른쪽: 인터랙티브 방명록 -->
+      <div class="lg:col-span-7 reveal">
+        <div class="bg-paper rounded-3xl p-6 sm:p-8 border border-lineSoft shadow-sm">
+          <h3 class="font-serif text-lg text-ink mb-4">방명록 남기기</h3>
+          <form id="guestbookForm" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <input
+                type="text"
+                id="guestName"
+                required
+                placeholder="이름 또는 닉네임"
+                class="w-full px-4 py-2.5 rounded-xl bg-paperWarm/70 border border-lineSoft text-sm text-ink placeholder:text-inkMuted/60 focus:outline-none focus:border-terracotta"
+              />
+              <select
+                id="guestTag"
+                class="w-full px-4 py-2.5 rounded-xl bg-paperWarm/70 border border-lineSoft text-sm text-ink focus:outline-none focus:border-terracotta"
+              >
+                <option value="연주 감상">♪ 연주 영상 잘 들었어요</option>
+                <option value="영화 공감">🎬 영화·드라마 취향이 같아요</option>
+                <option value="연주 문의">✉️ 공연·녹음 협업 문의</option>
+                <option value="응원 메시지">🌿 따뜻한 응원 한마디</option>
+              </select>
+            </div>
+            <textarea
+              id="guestMessage"
+              rows="3"
+              required
+              placeholder="수빈님에게 전하고 싶은 이야기를 남겨주세요..."
+              class="w-full px-4 py-3 rounded-xl bg-paperWarm/70 border border-lineSoft text-sm text-ink placeholder:text-inkMuted/60 focus:outline-none focus:border-terracotta"
+            ></textarea>
+            <div class="flex justify-end">
+              <button type="submit" class="px-6 py-2.5 rounded-full bg-ink text-paper text-sm font-medium hover:bg-terracotta transition-colors">
+                메시지 기록하기
+              </button>
+            </div>
+          </form>
+
+          <!-- 방명록 목록 -->
+          <div class="mt-8 pt-6 border-t border-lineSoft space-y-3.5 max-h-72 overflow-y-auto pr-1" id="guestbookList">
+            <!-- JS에서 초기 메시지 및 새 메시지 렌더링 -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="py-12 border-t border-lineSoft bg-paperWarm/50 text-center text-xs text-inkMuted">
+    <div class="max-w-6xl mx-auto px-5 space-y-2">
+      <p class="font-editorial text-lg text-ink tracking-widest">SUBIN</p>
+      <p>열두 줄의 울림과 스크린의 잔상을 기록하는 공간</p>
+      <p class="pt-2 opacity-75">&copy; 2026 SUBIN Gayageum &amp; Cinema Archive. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <!-- =========================================================
+       MODAL 1: 가야금 연주 영상 & 오디오 프리뷰 플레이어 모달
+  ========================================================== -->
+  <div id="performanceModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-ink/60 backdrop-blur-sm p-4">
+    <div class="bg-paper rounded-3xl max-w-2xl w-full overflow-hidden border border-lineSoft shadow-2xl animate-[fadeIn_0.25s_ease-out]">
+      <!-- 상단 비주얼 플레이어 영역 -->
+      <div class="relative aspect-video bg-ink overflow-hidden">
+        <img id="modalPerfImg" src="" alt="연주 썸네일" class="w-full h-full object-cover opacity-75" />
+        <div class="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/35 to-transparent flex flex-col justify-between p-6">
+          <div class="flex justify-between items-start">
+            <span id="modalPerfGenre" class="px-3 py-1 rounded-full bg-paper/90 text-ink text-xs font-medium"></span>
+            <button onclick="closePerformanceModal()" class="w-9 h-9 rounded-full bg-ink/60 text-paper hover:bg-terracotta flex items-center justify-center transition-colors" aria-label="닫기">
+              ✕
+            </button>
+          </div>
+
+          <!-- 중앙 인터랙티브 연주 시뮬레이터 컨트롤 -->
+          <div class="my-auto text-center space-y-3">
+            <button id="modalPlayBtn" onclick="togglePerformanceSynth()" class="mx-auto w-16 h-16 rounded-full bg-paper/95 text-ink hover:bg-terracotta hover:text-paper flex items-center justify-center shadow-lg transition-all transform hover:scale-105">
+              <span id="modalPlayIcon" class="text-xl ml-0.5">▶</span>
+            </button>
+            <div class="flex items-center justify-center gap-1 h-6" id="modalWaveBars">
+              <span class="w-1 bg-paper/80 rounded-full h-2"></span>
+              <span class="w-1 bg-paper/80 rounded-full h-2"></span>
+              <span class="w-1 bg-paper/80 rounded-full h-2"></span>
+              <span class="w-1 bg-paper/80 rounded-full h-2"></span>
+            </div>
+            <p id="modalAudioStatus" class="text-xs text-paper/85 tracking-wide">버튼을 누르면 가야금 선율 프리뷰가 연주됩니다</p>
+          </div>
+
+          <div class="flex items-center justify-between text-xs text-paper/80">
+            <span id="modalPerfInstrument"></span>
+            <span id="modalPerfDuration"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 하단 곡 해설 및 편곡 노트 -->
+      <div class="p-6 sm:p-8 space-y-4">
+        <div>
+          <h3 id="modalPerfTitle" class="font-serif text-xl sm:text-2xl text-ink"></h3>
+          <p id="modalPerfSubtitle" class="text-xs sm:text-sm text-terracotta mt-1"></p>
+        </div>
+        <p id="modalPerfDesc" class="text-sm text-inkMuted leading-relaxed"></p>
+        <div class="p-4 rounded-2xl bg-paperWarm border border-lineSoft">
+          <p class="text-xs font-medium text-ink mb-1">수빈의 연주 노트 (Arrangement &amp; Touch)</p>
+          <p id="modalPerfNote" class="text-xs text-inkMuted leading-relaxed"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MODAL 2: 영화/드라마 상세 감상 노트 모달
+  ========================================================== -->
+  <div id="filmModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-ink/60 backdrop-blur-sm p-4">
+    <div class="bg-paper rounded-3xl max-w-xl w-full overflow-hidden border border-lineSoft shadow-2xl">
+      <div class="relative h-56 sm:h-64 bg-ink">
+        <img id="modalFilmImg" src="" alt="작품 스틸" class="w-full h-full object-cover opacity-85" />
+        <div class="absolute inset-0 bg-gradient-to-t from-ink/85 via-ink/25 to-transparent flex flex-col justify-between p-6">
+          <div class="flex justify-between items-center">
+            <span id="modalFilmTag" class="px-3 py-1 rounded-full bg-paper/90 text-ink text-xs font-medium"></span>
+            <button onclick="closeFilmModal()" class="w-9 h-9 rounded-full bg-ink/60 text-paper hover:bg-terracotta flex items-center justify-center transition-colors">
+              ✕
+            </button>
+          </div>
+          <div>
+            <h3 id="modalFilmTitle" class="font-serif text-2xl text-paper"></h3>
+            <p id="modalFilmMeta" class="text-xs text-paper/80 mt-1"></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-6 sm:p-8 space-y-5">
+        <blockquote class="border-l-2 border-terracotta pl-4 italic font-serif text-sm sm:text-base text-ink">
+          <span id="modalFilmQuote"></span>
+        </blockquote>
+
+        <div class="space-y-2">
+          <h4 class="text-xs font-semibold uppercase tracking-wider text-inkMuted">수빈의 감상 기록</h4>
+          <p id="modalFilmReview" class="text-sm text-ink leading-relaxed"></p>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-paperWarm border border-lineSoft">
+          <h4 class="text-xs font-semibold text-sage mb-1">♪ 음악적 영감과의 연결</h4>
+          <p id="modalFilmInspiration" class="text-xs text-inkMuted leading-relaxed"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MODAL 3: 새로운 영화/드라마 감상 노트 추가 모달
+  ========================================================== -->
+  <div id="addFilmModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-ink/60 backdrop-blur-sm p-4">
+    <div class="bg-paper rounded-3xl max-w-lg w-full p-6 sm:p-8 border border-lineSoft shadow-2xl">
+      <div class="flex justify-between items-center mb-5">
+        <h3 class="font-serif text-xl text-ink">새로운 작품 감상 노트 기록</h3>
+        <button onclick="closeAddFilmModal()" class="text-inkMuted hover:text-ink text-lg">✕</button>
+      </div>
+      <form id="addFilmForm" class="space-y-4 text-sm">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-inkMuted mb-1">작품 제목 *</label>
+            <input type="text" id="newFilmTitle" required placeholder="예: 라라랜드 (La La Land)" class="w-full px-3.5 py-2 rounded-xl bg-paperWarm border border-lineSoft focus:outline-none focus:border-terracotta" />
+          </div>
+          <div>
+            <label class="block text-xs text-inkMuted mb-1">구분 / 개봉연도 *</label>
+            <input type="text" id="newFilmMeta" required placeholder="예: 영화 · 2016" class="w-full px-3.5 py-2 rounded-xl bg-paperWarm border border-lineSoft focus:outline-none focus:border-terracotta" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs text-inkMuted mb-1">기억에 남는 대사 *</label>
+          <input type="text" id="newFilmQuote" required placeholder="마음에 남은 한 줄 대사를 적어주세요" class="w-full px-3.5 py-2 rounded-xl bg-paperWarm border border-lineSoft focus:outline-none focus:border-terracotta" />
+        </div>
+        <div>
+          <label class="block text-xs text-inkMuted mb-1">감상평 및 여운 *</label>
+          <textarea id="newFilmReview" rows="3" required placeholder="작품을 보며 느낀 감정과 여운을 자유롭게 기록하세요" class="w-full px-3.5 py-2 rounded-xl bg-paperWarm border border-lineSoft focus:outline-none focus:border-terracotta"></textarea>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" onclick="closeAddFilmModal()" class="px-4 py-2 rounded-full border border-lineSoft text-inkMuted hover:text-ink">취소</button>
+          <button type="submit" class="px-5 py-2 rounded-full bg-terracotta text-paper font-medium hover:bg-ink transition-colors">아카이브에 추가</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 토스트 알림 메시지 박스 (alert 대신 사용) -->
+  <div id="toastBox" class="fixed bottom-6 right-6 z-50 hidden bg-ink text-paper px-5 py-3 rounded-full shadow-lg text-xs sm:text-sm items-center gap-2 transition-all">
+    <span class="text-terracotta">✦</span>
+    <span id="toastText"></span>
+  </div>
+
+  <!-- =========================================================
+       JAVASCRIPT: 데이터, 인터랙티브 오디오(Web Audio API), 모달, 필터
+  ========================================================== -->
+  <script>
+    // 테마별 예술적 SVG 일러스트/그라데이션 폴백 생성기 (네트워크 오류 시에도 깨짐 없는 고품격 비주얼 보장)
+    function applySvgFallback(imgEl, theme = 'gayageum', caption = 'SUBIN ARCHIVE') {
+      imgEl.onerror = null;
+      const palettes = {
+        gayageum: { bg1: '#3D2C22', bg2: '#7A543E', accent: '#E5C697', motif: 'strings' },
+        stage:    { bg1: '#4A181D', bg2: '#8C2D36', accent: '#E8C58E', motif: 'curtain' },
+        blue:     { bg1: '#1E3246', bg2: '#466A8A', accent: '#CBE0F5', motif: 'window' },
+        darkGold: { bg1: '#1C1B1A', bg2: '#3B342B', accent: '#D4AF6A', motif: 'strings' },
+        jazz:     { bg1: '#2E211B', bg2: '#6B4832', accent: '#E6B980', motif: 'vinyl' },
+        moon:     { bg1: '#232736', bg2: '#485069', accent: '#F2E5C6', motif: 'moon' },
+        forest:   { bg1: '#2B3D2C', bg2: '#5B7A58', accent: '#DCE8D5', motif: 'leaf' },
+        sea:      { bg1: '#163038', bg2: '#2F5C68', accent: '#B8DCE3', motif: 'wave' },
+        coffee:   { bg1: '#3E2B23', bg2: '#755343', accent: '#EFE5DC', motif: 'cup' },
+        flower:   { bg1: '#473D38', bg2: '#8C7A6F', accent: '#F5ECE6', motif: 'leaf' },
+        journal:  { bg1: '#3A352F', bg2: '#6E6458', accent: '#F3EFEA', motif: 'strings' }
+      };
+      const p = palettes[theme] || palettes.gayageum;
+      const safeCaption = caption.replace(/[<>&"']/g, '');
+
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500">
+          <defs>
+            <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="${p.bg1}"/>
+              <stop offset="100%" stop-color="${p.bg2}"/>
+            </linearGradient>
+          </defs>
+          <rect width="800" height="500" fill="url(#g)"/>
+          <g stroke="${p.accent}" stroke-opacity="0.28" fill="none">
+            <line x1="0" y1="140" x2="800" y2="140" stroke-width="1.5"/>
+            <line x1="0" y1="185" x2="800" y2="185" stroke-width="1.5"/>
+            <line x1="0" y1="230" x2="800" y2="230" stroke-width="2"/>
+            <line x1="0" y1="275" x2="800" y2="275" stroke-width="1.5"/>
+            <line x1="0" y1="320" x2="800" y2="320" stroke-width="1.5"/>
+            <circle cx="400" cy="230" r="110" stroke-width="1"/>
+          </g>
+          <text x="400" y="425" fill="${p.accent}" font-family="serif" font-size="20" text-anchor="middle" letter-spacing="3" opacity="0.9">${safeCaption}</text>
+        </svg>
+      `.trim();
+
+      imgEl.src = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
+    }
+
+    // 1. 가야금 연주 데이터 (전통 산조, 영화/드라마 OST, 현대 창작, 재즈/팝 크로스오버)
+    const performances = [
+      {
+        id: 'perf-1',
+        genre: 'traditional',
+        genreLabel: '전통 산조 · 정악',
+        title: '최옥삼류 가야금산조 중 진양조·자진모리',
+        subtitle: '12현 산조가야금 독주 · 장구 반주',
+        instrument: '12현 산조가야금 (오동나무 공명통)',
+        duration: '06:42',
+        fallbackTheme: 'gayageum',
+        image: 'https://images.unsplash.com/photo-1580130732478-4e339fb6836f?auto=format&fit=crop&w=900&q=80',
+        description: '절제된 기품과 묵직한 성음이 돋보이는 최옥삼류 산조입니다. 느린 진양조의 깊은 농현에서 시작해 휘몰아치는 자진모리의 역동적인 리듬까지 호흡의 완급을 담아 연주했습니다.',
+        note: '왼손의 짙은 농현(떨림)과 오른손의 단단한 뜯기 주법의 대비를 살려, 전통 가야금이 지닌 가장 본연의 소리를 기록하고자 했습니다.',
+        melody: [220, 261.63, 293.66, 329.63, 293.66, 261.63, 220, 196]
+      },
+      {
+        id: 'perf-2',
+        genre: 'ost',
+        genreLabel: '영화 · 드라마 OST',
+        title: "드라마 '정년이' — 목포의 눈물 & 국극 변주곡",
+        subtitle: '12현 & 25현 가야금 이중주 편곡',
+        instrument: '12현 산조가야금 + 25현 개량가야금',
+        duration: '04:18',
+        fallbackTheme: 'stage',
+        image: 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?auto=format&fit=crop&w=900&q=80',
+        description: "드라마 '정년이' 속 여성 국극단의 뜨거운 열정과 판소리 선율에서 영감을 받아 편곡한 연주곡입니다. 붉은 무대 막이 오를 때의 극적인 서사와 애절한 계면조 선율을 두 대의 가야금으로 엮었습니다.",
+        note: '판소리의 시김새를 12현 가야금의 꺾는 음과 굴리는 음으로 표현하고, 25현 가야금의 아르페지오로 무대 위 조명이 켜지는 순간의 벅찬 감동을 더했습니다.',
+        melody: [293.66, 349.23, 392.00, 440.00, 392.00, 349.23, 329.63, 293.66]
+      },
+      {
+        id: 'perf-3',
+        genre: 'ost',
+        genreLabel: '영화 · 드라마 OST',
+        title: "영화 '파이브 피트' — Don't Give Up On Me 가야금 커버",
+        subtitle: '25현 개량가야금 솔로 편곡',
+        instrument: '25현 개량가야금',
+        duration: '03:54',
+        fallbackTheme: 'blue',
+        image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=900&q=80',
+        description: "영화 '파이브 피트'의 푸른 새벽빛 창가처럼 아련한 서정성과 'Don't Give Up On Me'의 간절한 선율을 25현 가야금의 맑고 투명한 음색으로 재해석한 커버 영상입니다.",
+        note: '닿을 수 없는 여섯 발자국의 거리를 좁히려는 두 주인공의 마음처럼, 여린 하모닉스 주법과 잔잔한 여음(Afterglow)을 길게 남겨 연주했습니다.',
+        melody: [329.63, 392.00, 493.88, 523.25, 493.88, 392.00, 329.63, 293.66]
+      },
+      {
+        id: 'perf-4',
+        genre: 'contemporary',
+        genreLabel: '현대 창작 · 뉴에이지',
+        title: "황병기 명인 '침향무' & 25현 창작곡 '달빛 아래 흐르는 강'",
+        subtitle: '현대 가야금 레퍼토리 스튜디오 라이브',
+        instrument: '12현 가야금 (전통 명주실)',
+        duration: '05:30',
+        fallbackTheme: 'darkGold',
+        image: 'https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?auto=format&fit=crop&w=900&q=80',
+        description: '신라의 고아한 불교 예술미를 현대적 어법으로 풀어낸 침향무의 신비로운 음향과, 어두운 무대 조명 아래 금빛 명주실이 진동하는 창작곡을 함께 담았습니다.',
+        note: '전통적인 조현법을 벗어나 변청과 독특한 연주 주법을 활용하여, 동양화 수묵담채화 같은 여백의 미학을 소리로 그렸습니다.',
+        melody: [261.63, 311.13, 392.00, 415.30, 392.00, 311.13, 261.63, 246.94]
+      },
+      {
+        id: 'perf-5',
+        genre: 'crossover',
+        genreLabel: '재즈 · 팝 크로스오버',
+        title: "재즈 스탠다드 'Autumn Leaves (고엽)' 가야금 & 콘트라베이스",
+        subtitle: '25현 가야금 · 콘트라베이스 · 브러시 드럼',
+        instrument: '25현 개량가야금',
+        duration: '04:45',
+        fallbackTheme: 'jazz',
+        image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=900&q=80',
+        description: 'LP 턴테이블의 따뜻한 노이즈가 흐르는 재즈 클럽의 밤, 스탠다드 명곡 Autumn Leaves를 25현 가야금의 스윙 리듬과 즉흥 연주로 풀어낸 크로스오버 세션입니다.',
+        note: '가야금 특유의 탄현(뜯기) 아티큘레이션이 콘트라베이스의 묵직한 피치카토와 어우러지며 예상치 못한 따뜻한 그루브를 만들어냅니다.',
+        melody: [329.63, 349.23, 392.00, 523.25, 493.88, 440.00, 392.00, 349.23]
+      },
+      {
+        id: 'perf-6',
+        genre: 'crossover',
+        genreLabel: '재즈 · 팝 크로스오버',
+        title: '어쿠스틱 발라드 메들리 — 밤편지 & 봄날',
+        subtitle: '25현 가야금 어쿠스틱 커버',
+        instrument: '25현 개량가야금',
+        duration: '04:10',
+        fallbackTheme: 'moon',
+        image: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?auto=format&fit=crop&w=900&q=80',
+        description: '은은한 달빛과 촛불이 켜진 밤, 많은 이들에게 위로를 건넨 서정적인 한국 발라드 명곡들을 25현 가야금만의 섬세한 강약 조절과 화음으로 엮은 어쿠스틱 커버입니다.',
+        note: '가사가 없는 연주곡이지만 명주실의 미세한 떨림만으로도 노랫말의 진심이 전해지도록 한 음 한 음 눌러 담았습니다.',
+        melody: [392.00, 440.00, 493.88, 587.33, 523.25, 493.88, 440.00, 392.00]
+      }
+    ];
+
+    // 2. 사랑하는 영화 및 드라마 데이터 ('파이브 피트', '정년이', '리틀 포레스트', '헤어질 결심' 맞춤 이미지)
+    let favoriteFilms = [
+      {
+        id: 'film-1',
+        tag: '인생 영화 · 로맨스 드라마',
+        title: '파이브 피트 (Five Feet Apart)',
+        meta: '영화 · 2019 · 감독 저스틴 밸도니',
+        fallbackTheme: 'blue',
+        image: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=900&q=80',
+        quote: '“우리는 그저 숨을 쉬기 위해 살아가는 게 아니라, 사랑하기 위해 숨을 쉬는 거야.”',
+        review: '낭포성 섬유증이라는 병 때문에 서로에게 여섯 발자국 이상 다가갈 수 없는 스텔라와 윌이, 단 한 발자국을 훔쳐 ‘다섯 발자국’의 거리를 허락하는 이야기가 오래도록 가슴에 남았습니다. 차가운 겨울 창가 너머로 피어나는 푸른 온기처럼, 당연하게 여겼던 손길과 숨결의 소중함을 일깨워준 작품입니다.',
+        inspiration: '닿을 듯 닿지 않는 다섯 발자국의 애틋한 긴장감은 제 25현 가야금 편곡의 여백과 잔향을 다루는 태도에 큰 영감을 주었습니다.'
+      },
+      {
+        id: 'film-2',
+        tag: '인생 드라마 · 전통 예술 서사',
+        title: '정년이 (Jeongnyeon: The Star Is Born)',
+        meta: '드라마 · 2024 · 연출 정지인',
+        fallbackTheme: 'stage',
+        image: 'https://images.unsplash.com/photo-1547153760-18fc86324498?auto=format&fit=crop&w=900&q=80',
+        quote: '“무대 위에서 내 소리를 낼 수만 있다면, 나는 그걸로 충분해.”',
+        review: '1950년대 여성 국극단을 배경으로, 가진 것 하나 없던 소녀 윤정년이 오직 소리에 대한 순수한 열망으로 자신의 한계를 돌파해 나가는 과정이 벅찬 전율을 안겨주었습니다. 화려한 한복 자수와 부채 춤사위, 무대 조명 아래 온몸을 던지는 예인들의 삶이 같은 국악인으로서 깊은 울림을 주었습니다.',
+        inspiration: '판소리의 처절하면서도 황홀한 ‘득음’의 순간을 보며, 제 가야금 산조 연주 역시 기교를 넘어 듣는 이의 마음을 흔드는 진심의 소리가 되어야겠다고 다짐했습니다.'
+      },
+      {
+        id: 'film-3',
+        tag: '사계절의 위로 · 힐링 영화',
+        title: '리틀 포레스트 (Little Forest)',
+        meta: '영화 · 2018 · 감독 임순례',
+        fallbackTheme: 'forest',
+        image: 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&w=900&q=80',
+        quote: '“잘 자라기 위해서는, 그리고 좋은 맛을 내기 위해서는 제대로 된 시간이 필요하다.”',
+        review: '바쁜 도시의 속도에 지칠 때마다 꺼내 보는 영화입니다. 사계절의 초록빛 뜰에서 직접 기른 작물로 정성스레 한 끼를 차려 먹는 혜원의 모습은, 급하게 결과를 내기보다 매일 꾸준히 조율하고 연습하는 음악가의 일상과 닮아 있습니다.',
+        inspiration: '아침에 내리는 커피와 계절의 꽃을 곁에 두는 저의 작은 루틴을 소중히 기록하게 만든 영화입니다.'
+      },
+      {
+        id: 'film-4',
+        tag: '미장센과 여운 · 미스터리 멜로',
+        title: '헤어질 결심 (Decision to Leave)',
+        meta: '영화 · 2022 · 감독 박찬욱',
+        fallbackTheme: 'sea',
+        image: 'https://images.unsplash.com/photo-1505118380757-91f5f5632de0?auto=format&fit=crop&w=900&q=80',
+        quote: '“마침내.”',
+        review: '짙은 안개 낀 청록빛 해변과 파도 소리, 절제된 대사 속에 숨겨진 격정적인 감정이 한 편의 고전 시조처럼 느껴졌습니다. 말로 다 표현하지 않고 남겨둔 여백이 오히려 가장 강렬한 울림을 남긴다는 사실을 다시 깨달았습니다.',
+        inspiration: '음표를 가득 채우기보다 쉼표와 여운으로 감정을 전달하는 가야금 독주 편곡의 방향성을 잡아주었습니다.'
+      }
+    ];
+
+    // 3. 초기 방명록 데이터
+    let guestbookEntries = [
+      {
+        name: '서연',
+        tag: '영화 공감',
+        message: '수빈님! 저도 파이브 피트랑 정년이 정말 좋아하는데, 가야금으로 편곡된 선율 설명을 읽으니 마음이 따뜻해지네요. 연주 영상도 너무 아름답습니다 :)',
+        date: '2026. 11. 21'
+      },
+      {
+        name: '민준 (음악감독)',
+        tag: '연주 문의',
+        message: '단편영화 사운드트랙 작업 중 전통 현악기 솔로 파트를 찾고 있었는데, 수빈님의 12현 산조와 크로스오버 감성이 딱 맞을 것 같습니다. 메일로 연락드리겠습니다!',
+        date: '2026. 11. 18'
+      },
+      {
+        name: '지우',
+        tag: '연주 감상',
+        message: '상단에서 다섯 줄 가야금 현을 직접 뜯어볼 수 있는 디테일이 너무 감성적이에요. 아침 커피와 함께 들려주시는 음악 항상 응원합니다.',
+        date: '2026. 11. 14'
+      }
+    ];
+
+    // =========================================================
+    // Web Audio API: 실제 가야금 명주실 발현(Pluck) 사운드 합성기
+    // =========================================================
+    let audioCtx = null;
+    let activeSynthInterval = null;
+    let currentPlayingPerf = null;
+
+    function initAudioContext() {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    // 한 음을 가야금처럼 따뜻하게 뜯는 소리 합성
+    function playGayageumString(freq, duration = 2.2) {
+      try {
+        initAudioContext();
+        const now = audioCtx.currentTime;
+
+        // 기본음(Triangle) + 배음(Sine)으로 오동나무 공명통 질감 구현
+        const osc1 = audioCtx.createOscillator();
+        const osc2 = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        const filter = audioCtx.createBiquadFilter();
+
+        osc1.type = 'triangle';
+        osc1.frequency.setValueAtTime(freq, now);
+        // 가야금 특유의 미세한 피치 벤딩(농현 느낌)
+        osc1.frequency.exponentialRampToValueAtTime(freq * 1.004, now + 0.18);
+        osc1.frequency.exponentialRampToValueAtTime(freq, now + 0.55);
+
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(freq * 2, now); // 2배음
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1800, now);
+        filter.frequency.exponentialRampToValueAtTime(380, now + duration);
+
+        // 발현(Pluck) 엔벨로프
+        gainNode.gain.setValueAtTime(0.001, now);
+        gainNode.gain.linearRampToValueAtTime(0.22, now + 0.015);
+        gainNode.gain.exponentialRampToValueAtTime(0.0008, now + duration);
+
+        const osc2Gain = audioCtx.createGain();
+        osc2Gain.gain.setValueAtTime(0.06, now);
+        osc2Gain.gain.exponentialRampToValueAtTime(0.0001, now + duration * 0.6);
+
+        osc1.connect(filter);
+        osc2.connect(osc2Gain);
+        osc2Gain.connect(filter);
+        filter.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + duration);
+        osc2.stop(now + duration);
+      } catch (e) {
+        console.warn('Audio playback skipped:', e);
+      }
+    }
+
+    // 히어로 섹션 미니 가야금 현 터치 이벤트
+    function pluckNote(freq, label) {
+      playGayageumString(freq, 2.0);
+      const labelEl = document.getElementById('pluckedNoteLabel');
+      if (labelEl) {
+        labelEl.textContent = `♪ 울림: ${label}`;
+      }
+    }
+
+    // 상단 헤더 '현 울림 듣기' 아르페지오 재생
+    function toggleAmbientPluck() {
+      const pentatonic = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25];
+      pentatonic.forEach((freq, idx) => {
+        setTimeout(() => playGayageumString(freq, 2.4), idx * 240);
+      });
+      showToast('12현 가야금의 5음계 울림이 연주됩니다.');
+    }
+
+    // =========================================================
+    // 렌더링 함수들
+    // =========================================================
+    function renderPerformances(filterGenre = 'all') {
+      const grid = document.getElementById('performanceGrid');
+      const filtered = filterGenre === 'all'
+        ? performances
+        : performances.filter(p => p.genre === filterGenre);
+
+      grid.innerHTML = filtered.map(perf => `
+        <article class="group bg-paper rounded-3xl overflow-hidden border border-lineSoft shadow-sm hover:shadow-md transition-all flex flex-col justify-between reveal active">
+          <div>
+            <!-- 썸네일 & 재생 오버레이 -->
+            <div class="relative aspect-[16/10] overflow-hidden bg-ink cursor-pointer" onclick="openPerformanceModal('${perf.id}')">
+              <img
+                src="${perf.image}"
+                onerror="applySvgFallback(this, '${perf.fallbackTheme || 'gayageum'}', '${perf.genreLabel}')"
+                alt="${perf.title}"
+                class="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-700"
+              />
+              <div class="absolute inset-0 bg-gradient-to-t from-ink/75 via-ink/20 to-transparent"></div>
+
+              <span class="absolute top-3.5 left-3.5 px-3 py-1 rounded-full bg-paper/90 backdrop-blur-sm text-ink text-[11px] font-medium">
+                ${perf.genreLabel}
+              </span>
+              <span class="absolute bottom-3.5 right-3.5 px-2.5 py-0.5 rounded-md bg-ink/75 text-paper text-[11px] font-mono">
+                ${perf.duration}
+              </span>
+
+              <!-- 재생 버튼 아이콘 -->
+              <div class="absolute inset-0 flex items-center justify-center">
+                <div class="w-12 h-12 rounded-full bg-paper/90 text-ink group-hover:bg-terracotta group-hover:text-paper flex items-center justify-center shadow-md transition-all transform group-hover:scale-110">
+                  <span class="text-sm ml-0.5">▶</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 텍스트 정보 -->
+            <div class="p-6">
+              <p class="text-xs text-terracotta font-medium mb-1">${perf.instrument}</p>
+              <h3 class="font-serif text-lg text-ink leading-snug group-hover:text-terracotta transition-colors cursor-pointer" onclick="openPerformanceModal('${perf.id}')">
+                ${perf.title}
+              </h3>
+              <p class="text-xs text-inkMuted mt-1">${perf.subtitle}</p>
+              <p class="text-xs sm:text-sm text-inkMuted mt-3 line-clamp-2 leading-relaxed">
+                ${perf.description}
+              </p>
+            </div>
+          </div>
+
+          <div class="px-6 pb-6 pt-2 flex items-center justify-between border-t border-lineSoft/60">
+            <button onclick="openPerformanceModal('${perf.id}')" class="text-xs font-medium text-ink hover:text-terracotta transition-colors flex items-center gap-1.5">
+              <span>연주 감상 및 노트 보기</span>
+              <span>→</span>
+            </button>
+            <button onclick="quickPreviewMelody('${perf.id}')" class="px-3 py-1 rounded-full bg-paperWarm hover:bg-terracotta/15 text-[11px] text-inkMuted hover:text-terracotta transition-colors">
+              ♪ 선율 미리듣기
+            </button>
+          </div>
+        </article>
+      `).join('');
+    }
+
+    // 카드에서 바로 짧은 가야금 테마 미리듣기
+    function quickPreviewMelody(perfId) {
+      const perf = performances.find(p => p.id === perfId);
+      if (!perf) return;
+      perf.melody.slice(0, 5).forEach((freq, i) => {
+        setTimeout(() => playGayageumString(freq, 1.9), i * 320);
+      });
+      showToast(`'${perf.title}' 테마 선율을 들려드립니다.`);
+    }
+
+    function renderCinema() {
+      const grid = document.getElementById('cinemaGrid');
+      grid.innerHTML = favoriteFilms.map(film => `
+        <article class="group bg-paper rounded-3xl overflow-hidden border border-lineSoft shadow-sm hover:shadow-md transition-all flex flex-col sm:flex-row reveal active">
+          <div class="sm:w-2/5 aspect-[4/3] sm:aspect-auto overflow-hidden bg-ink relative cursor-pointer" onclick="openFilmModal('${film.id}')">
+            <img
+              src="${film.image}"
+              onerror="applySvgFallback(this, '${film.fallbackTheme || 'blue'}', '${film.title}')"
+              alt="${film.title}"
+              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+            />
+            <span class="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-paper/90 text-ink text-[10px] font-medium">
+              ${film.tag}
+            </span>
+          </div>
+
+          <div class="sm:w-3/5 p-6 flex flex-col justify-between space-y-4">
+            <div>
+              <p class="text-[11px] text-inkMuted">${film.meta}</p>
+              <h3 class="font-serif text-xl text-ink mt-1 group-hover:text-terracotta transition-colors cursor-pointer" onclick="openFilmModal('${film.id}')">
+                ${film.title}
+              </h3>
+
+              <blockquote class="mt-3 pl-3 border-l-2 border-terracotta/60 font-serif text-xs text-ink/90 italic leading-relaxed">
+                ${film.quote}
+              </blockquote>
+
+              <p class="text-xs sm:text-sm text-inkMuted mt-3 line-clamp-3 leading-relaxed">
+                ${film.review}
+              </p>
+            </div>
+
+            <div class="pt-2 flex justify-between items-center border-t border-lineSoft/60">
+              <button onclick="openFilmModal('${film.id}')" class="text-xs font-medium text-terracotta hover:text-ink transition-colors">
+                감상 노트 전체 읽기 →
+              </button>
+            </div>
+          </div>
+        </article>
+      `).join('');
+    }
+
+    function renderGuestbook() {
+      const list = document.getElementById('guestbookList');
+      list.innerHTML = guestbookEntries.map(entry => `
+        <div class="p-4 rounded-2xl bg-paperWarm/70 border border-lineSoft/80 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="font-medium text-xs sm:text-sm text-ink">${escapeHtml(entry.name)}</span>
+              <span class="px-2 py-0.5 rounded-full bg-paper text-[10px] text-terracotta border border-lineSoft">${escapeHtml(entry.tag)}</span>
+            </div>
+            <span class="text-[11px] text-inkMuted">${entry.date}</span>
+          </div>
+          <p class="text-xs sm:text-sm text-inkMuted leading-relaxed">${escapeHtml(entry.message)}</p>
+        </div>
+      `).join('');
+    }
+
+    // XSS 방지 이스케이프 헬퍼
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // =========================================================
+    // 모달 제어 로직
+    // =========================================================
+    function openPerformanceModal(perfId) {
+      const perf = performances.find(p => p.id === perfId);
+      if (!perf) return;
+
+      currentPlayingPerf = perf;
+      stopPerformanceSynth();
+
+      const modalImg = document.getElementById('modalPerfImg');
+      modalImg.onerror = () => applySvgFallback(modalImg, perf.fallbackTheme || 'gayageum', perf.title);
+      modalImg.src = perf.image;
+      document.getElementById('modalPerfGenre').textContent = perf.genreLabel;
+      document.getElementById('modalPerfInstrument').textContent = perf.instrument;
+      document.getElementById('modalPerfDuration').textContent = perf.duration;
+      document.getElementById('modalPerfTitle').textContent = perf.title;
+      document.getElementById('modalPerfSubtitle').textContent = perf.subtitle;
+      document.getElementById('modalPerfDesc').textContent = perf.description;
+      document.getElementById('modalPerfNote').textContent = perf.note;
+
+      const modal = document.getElementById('performanceModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closePerformanceModal() {
+      stopPerformanceSynth();
+      const modal = document.getElementById('performanceModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function togglePerformanceSynth() {
+      if (activeSynthInterval) {
+        stopPerformanceSynth();
+        return;
+      }
+      if (!currentPlayingPerf) return;
+
+      const icon = document.getElementById('modalPlayIcon');
+      const status = document.getElementById('modalAudioStatus');
+      const bars = document.querySelectorAll('#modalWaveBars span');
+
+      icon.textContent = '❚❚';
+      status.textContent = `연주 중 · ${currentPlayingPerf.instrument}`;
+      bars.forEach(bar => bar.classList.add('playing-bar'));
+
+      let step = 0;
+      const melody = currentPlayingPerf.melody;
+      playGayageumString(melody[0], 2.2);
+
+      activeSynthInterval = setInterval(() => {
+        step = (step + 1) % melody.length;
+        playGayageumString(melody[step], 2.2);
+      }, 650);
+    }
+
+    function stopPerformanceSynth() {
+      if (activeSynthInterval) {
+        clearInterval(activeSynthInterval);
+        activeSynthInterval = null;
+      }
+      const icon = document.getElementById('modalPlayIcon');
+      const status = document.getElementById('modalAudioStatus');
+      const bars = document.querySelectorAll('#modalWaveBars span');
+
+      if (icon) icon.textContent = '▶';
+      if (status) status.textContent = '버튼을 누르면 가야금 선율 프리뷰가 연주됩니다';
+      bars.forEach(bar => bar.classList.remove('playing-bar'));
+    }
+
+    function openFilmModal(filmId) {
+      const film = favoriteFilms.find(f => f.id === filmId);
+      if (!film) return;
+
+      const modalFilmImg = document.getElementById('modalFilmImg');
+      modalFilmImg.onerror = () => applySvgFallback(modalFilmImg, film.fallbackTheme || 'blue', film.title);
+      modalFilmImg.src = film.image;
+      document.getElementById('modalFilmTag').textContent = film.tag;
+      document.getElementById('modalFilmTitle').textContent = film.title;
+      document.getElementById('modalFilmMeta').textContent = film.meta;
+      document.getElementById('modalFilmQuote').textContent = film.quote;
+      document.getElementById('modalFilmReview').textContent = film.review;
+      document.getElementById('modalFilmInspiration').textContent = film.inspiration;
+
+      const modal = document.getElementById('filmModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeFilmModal() {
+      const modal = document.getElementById('filmModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function openAddFilmModal() {
+      const modal = document.getElementById('addFilmModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeAddFilmModal() {
+      const modal = document.getElementById('addFilmModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    // 토스트 알림 함수
+    let toastTimeout = null;
+    function showToast(msg) {
+      const box = document.getElementById('toastBox');
+      const text = document.getElementById('toastText');
+      text.textContent = msg;
+      box.classList.remove('hidden');
+      box.classList.add('flex');
+
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        box.classList.add('hidden');
+        box.classList.remove('flex');
+      }, 3200);
+    }
+
+    // =========================================================
+    // 이벤트 리스너 및 초기화
+    // =========================================================
+    document.addEventListener('DOMContentLoaded', () => {
+      renderPerformances('all');
+      renderCinema();
+      renderGuestbook();
+
+      // 장르 필터 클릭 이벤트
+      document.querySelectorAll('.genre-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.genre-btn').forEach(b => {
+            b.classList.remove('bg-ink', 'text-paper', 'font-medium');
+            b.classList.add('bg-paperWarm', 'text-inkMuted', 'border', 'border-lineSoft');
+          });
+          btn.classList.remove('bg-paperWarm', 'text-inkMuted', 'border', 'border-lineSoft');
+          btn.classList.add('bg-ink', 'text-paper', 'font-medium');
+
+          renderPerformances(btn.dataset.genre);
+        });
+      });
+
+      // 모바일 메뉴 토글
+      const mobileBtn = document.getElementById('mobileMenuBtn');
+      const mobileMenu = document.getElementById('mobileMenu');
+      mobileBtn.addEventListener('click', () => {
+        mobileMenu.classList.toggle('hidden');
+      });
+      document.querySelectorAll('.mobile-link').forEach(link => {
+        link.addEventListener('click', () => mobileMenu.classList.add('hidden'));
+      });
+
+      // 새 작품 추가 폼 제출
+      document.getElementById('addFilmForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const title = document.getElementById('newFilmTitle').value.trim();
+        const meta = document.getElementById('newFilmMeta').value.trim();
+        const quote = document.getElementById('newFilmQuote').value.trim();
+        const review = document.getElementById('newFilmReview').value.trim();
+
+        if (!title || !review) return;
+
+        favoriteFilms.unshift({
+          id: 'film-' + Date.now(),
+          tag: '새로 기록한 작품',
+          title,
+          meta,
+          fallbackTheme: 'moon',
+          image: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=900&q=80',
+          quote: `“${quote.replace(/^["“]|["”]$/g, '')}”`,
+          review,
+          inspiration: '오늘 기록한 이 작품의 장면과 여운이 다음 가야금 연주의 새로운 영감이 됩니다.'
+        });
+
+        renderCinema();
+        e.target.reset();
+        closeAddFilmModal();
+        showToast(`'${title}' 감상 노트가 아카이브에 추가되었습니다.`);
+      });
+
+      // 방명록 폼 제출
+      document.getElementById('guestbookForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = document.getElementById('guestName').value.trim();
+        const tag = document.getElementById('guestTag').value;
+        const message = document.getElementById('guestMessage').value.trim();
+
+        if (!name || !message) return;
+
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}. ${String(now.getMonth() + 1).padStart(2, '0')}. ${String(now.getDate()).padStart(2, '0')}`;
+
+        guestbookEntries.unshift({ name, tag, message, date: dateStr });
+        renderGuestbook();
+        e.target.reset();
+        showToast('소중한 메시지가 방명록에 기록되었습니다.');
+      });
+
+      // 모달 바깥 영역 클릭 시 닫기
+      ['performanceModal', 'filmModal', 'addFilmModal'].forEach(modalId => {
+        document.getElementById(modalId).addEventListener('click', (e) => {
+          if (e.target.id === modalId) {
+            if (modalId === 'performanceModal') closePerformanceModal();
+            if (modalId === 'filmModal') closeFilmModal();
+            if (modalId === 'addFilmModal') closeAddFilmModal();
+          }
+        });
+      });
+
+      // 스크롤 등장 애니메이션 옵저버
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('active');
+          }
+        });
+      }, { threshold: 0.1 });
+
+      document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+    });
+  </script>
+</body>
+</html>
